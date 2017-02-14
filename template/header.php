@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="css/style.css">
 	<script src="js/jquery.min.js"></script>
 	<script src="js/bootstrap.min.js"></script>
+	<script src="js/game.js"></script>
 </head>
 <body>
 		<nav class="navbar navbar-default">

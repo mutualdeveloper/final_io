@@ -1,9 +1,18 @@
-
+% Wumpus World Simulator 
+%
+% Adapted from code written by Larry Holder (holder@cse.uta.edu)
+%
+% A Prolog implementation of the Wumpus world described in Russell and
+% Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
+% A few enhancements have been added:
+%   - random wumpus world generator
+%
+% See comments on the following interface procedures:
+%
 %   evaluate_agent(Trials,Score,Time)
 %   initialize(World,Percept)
 %   restart(Percept)
 %
-
 
 :- use_module(library(lists)).
 :- use_module(library(random)).
@@ -12,19 +21,19 @@
 	  ww_initial_state/1,
 	  wumpus_world_extent/1,
 	  wumpus_location/2,
-	  estado_wumpus/1,
+	  wumpus_health/1,
 	  gold/2,
 	  pit/2,
 	  agent_location/2,
-	  mi_orientacion/1,
+	  agent_orientation/1,
 	  agent_in_cave/1,
-	  mi_estado/1,
-	  mi_oro/1,
-	  mis_flechas/1,
+	  agent_health/1,
+	  agent_gold/1,
+	  agent_arrows/1,
 	  agent_score/1.
 
 
-gold_probability(0.50).  % Probability that a location has gold
+gold_probability(0.10).  % Probability that a location has gold
 pit_probability(0.20).   % Probability that a non-(1,1) location has a pit
 max_agent_actions(64).   % Maximum actions per trial allowed by agent
 max_agent_tries(10).     % Maximum agent tries (climb or die) per world
@@ -86,7 +95,7 @@ run_agent_trials(Trials,NextTrial,Score,Time) :-
 %   spent during calls to run_agent is returned in Time (millisecs).
 
 run_agent_trial(_,_,0,_,_) :-             % trial over when agent dies or
-  ( mi_estado(muerto) ;                  % leaves cave
+  ( agent_health(dead) ;                  % leaves cave
     agent_in_cave(no) ),
   !.
 
@@ -100,7 +109,7 @@ run_agent_trial(NumActions,Percept,Time,DB,Actions) :-
   run_agent(Percept,Action,DB,NewDB,Actions,NewActions),          
   % needs to be defined externally
   statistics(runtime,[T2|_]),
-  accion(Action,Percept1),
+  execute(Action,Percept1),
   NumActions1 is NumActions + 1,
   run_agent_trial(NumActions1,Percept1,Time1,NewDB,NewActions),
   Time is Time1 + (T2 - T1).
@@ -111,30 +120,26 @@ run_agent_trial(NumActions,Percept,Time,DB,Actions) :-
 %   1,1.  World can be either 'fig62' for Figure 6.2 of Russell and Norvig,
 %   or 'random' to generate a random world.
 
-
-%initialize([Stench,Breeze,Glitter,no,no]) :-
-  initialize() :-
-  initialize_world(),
+initialize(World,[Stench,Breeze,Glitter,no,no]) :-
+  initialize_world(World),
   initialize_agent,
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
-  %display_action(initialize).
-
-
+  glitter(Glitter),
+  display_action(initialize).
 
 
 % restart(Percept): Restarts the current world from scratch and returns
 %   the initial Percept.
 
 restart([Stench,Breeze,Glitter,no,no]) :-
-  borrar_info_mundo,
+  ww_retractall,
   ww_initial_state(L),
   assert_list(L),
   initialize_agent,
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).,
+  glitter(Glitter),
   display_action(restart).
 
 
@@ -159,17 +164,17 @@ restart([Stench,Breeze,Glitter,no,no]) :-
 %
 % wumpus_world_extent(E): defines world to be E by E
 % wumpus_location(X,Y): the Wumpus is in square X,Y
-% wumpus_health(H): H is 'dead' or 'vivo'
+% wumpus_health(H): H is 'dead' or 'alive'
 % gold(X,Y): there is gold in square X,Y
 % pit(X,Y): there is a pit in square X,Y
 
-initialize_world() :-
-  borrar_info_mundo,
+initialize_world(fig62) :-
+  ww_retractall,
   retractall(ww_initial_state(_)),
   assert(ww_initial_state([])),
   addto_ww_init_state(wumpus_world_extent(4)),
   addto_ww_init_state(wumpus_location(1,3)),
-  addto_ww_init_state(estado_wumpus(vivo)),
+  addto_ww_init_state(wumpus_health(alive)),
   addto_ww_init_state(gold(2,3)),
   addto_ww_init_state(pit(3,1)),
   addto_ww_init_state(pit(3,3)),
@@ -178,69 +183,69 @@ initialize_world() :-
   assert_list(L).
 
 initialize_world(random) :-
-  borrar_info_mundo,
+  ww_retractall,
   retractall(ww_initial_state(_)),
-  asserta(ww_initial_state([])),
+  assert(ww_initial_state([])),
   addto_ww_init_state(wumpus_world_extent(4)),
   all_squares(4,AllSqrs),
   gold_probability(PG),             % place gold
   place_objects(gold,PG,AllSqrs),
   at_least_one_gold(4),
-  del([1,1],AllSqrs,AllSqrs1),
+  delete(AllSqrs,[1,1],AllSqrs1),
+%  del([1,1],AllSqrs,AllSqrs1),
   pit_probability(PP),              % place pits
   place_objects(pit,PP,AllSqrs1),
-  random_member([WX,WY],AllSqrs1),  % initialize wumpus
+  length(AllSqrs,N),
+  random(1,N,Loc),
+  nth(Loc,AllSqrs1,[WX,WY]),        % initialize wumpus
+%  random_member([WX,WY],AllSqrs1),  
   addto_ww_init_state(wumpus_location(WX,WY)),
-  addto_ww_init_state(wumpus_orientation(0)),
   addto_ww_init_state(wumpus_health(alive)),
-  addto_ww_init_state(wumpus_last_action(nil)),
-  wumpus_movement_rules(Rules),
-  random_member(Rule,Rules),
-  addto_ww_init_state(wumpus_movement_rule(Rule)),
   ww_initial_state(L),
   assert_list(L).
 
 
-% initialize_agent: agent is initially vivo, destitute (except for one
+% initialize_agent: agent is initially alive, destitute (except for one
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
 
 initialize_agent :-
   retractall(agent_location(_,_)),
-  retractall(mi_orientacion(_)),
+  retractall(agent_orientation(_)),
   retractall(agent_in_cave(_)),
-  retractall(mi_estado(_)),
-  retractall(mi_oro(_)),
-  retractall(mis_flechas(_)),
+  retractall(agent_health(_)),
+  retractall(agent_gold(_)),
+  retractall(agent_arrows(_)),
   retractall(agent_score(_)),
   assert(agent_location(1,1)),
-  assert(mi_orientacion(0)),
+  assert(agent_orientation(0)),
   assert(agent_in_cave(yes)),
-  assert(mi_estado(vivo)),
-  assert(mi_oro(0)),
-  assert(mis_flechas(1)),
+  assert(agent_health(alive)),
+  assert(agent_gold(0)),
+  assert(agent_arrows(1)),
   assert(agent_score(0)).
 
 
-% borrar_info_mundo: Retira toda la informacion del Wumpus en el mundo, exceptuando al
-%   jugador.
+% ww_retractall: Retract all wumpus world information, except about the
+%   agent.
 
-borrar_info_mundo :-
+ww_retractall :-
   retractall(wumpus_world_extent(_)),
   retractall(wumpus_location(_,_)),
-  retractall(estado_wumpus(_)),
+  retractall(wumpus_health(_)),
   retractall(gold(_,_)),
   retractall(pit(_,_)).
 
 
-% addto_ww_init_state(Fact): Agregar Fact a la lita L almacenada en ww_initial_state(L)
+% addto_ww_init_state(Fact): Adds Fact to the list L stored in
+%   ww_initial_state(L).
+
 addto_ww_init_state(Fact) :-
   retract(ww_initial_state(L)),
   assert(ww_initial_state([Fact|L])).
 
 
-% assert_list(L): Agrega todos los Fact en una lista.
+% assert_list(L): Assert all facts on list L.
 
-%parada
 assert_list([]).
 
 assert_list([Fact|Facts]) :-
@@ -300,95 +305,95 @@ at_least_one_gold(E) :-
 
 
 %------------------------------------------------------------------------
-% accion(Action,Percept): executes Action and returns Percept
+% execute(Action,Percept): executes Action and returns Percept
 %
 %   Action is one of:
-%     caminar: move one square along current orientation if possible
-%     girarizquierda:  turn left 90 degrees
-%     girarderecha: turn right 90 degrees
-%     alzar:      pickup gold if in square
-%     disparar:     shoot an arrow along orientation, killing wumpus if
+%     goforward: move one square along current orientation if possible
+%     turnleft:  turn left 90 degrees
+%     turnright: turn right 90 degrees
+%     grab:      pickup gold if in square
+%     shoot:     shoot an arrow along orientation, killing wumpus if
 %                in that direction
-%     finalizar:     if in square 1,1, leaves the cave and adds 1000 points
+%     climb:     if in square 1,1, leaves the cave and adds 1000 points
 %                for each piece of gold
 %
 %   Percept = [Stench,Breeze,Glitter,Bump,Scream]
 %             These variables are either 'yes' or 'no'.  
 
 
-accion(_,[no,no,no,no,no]) :-
-  mi_estado(muerto), !,         % agent must be vivo to execute actions
-  format("Has muerto!~n",[]).
+execute(_,[no,no,no,no,no]) :-
+  agent_health(dead), !,         % agent must be alive to execute actions
+  format("You are dead!~n",[]).
 
-accion(_,[no,no,no,no,no]) :-
+execute(_,[no,no,no,no,no]) :-
   agent_in_cave(no), !,         % agent must be in the cave
-  format("Has dejado la cueva.~n",[]).
+  format("You have left the cave.~n",[]).
 
-accion(caminar,[Stench,Breeze,Glitter,Bump,no]) :-
+execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
   decrement_score,
-  caminar(Bump),        % update location and check for bump
-  update_mi_estado,    % check for wumpus or pit
+  goforward(Bump),        % update location and check for bump
+  update_agent_health,    % check for wumpus or pit
   stench(Stench),         % update rest of percept
   breeze(Breeze),
-  glitter(Glitter).
-  %display_action(caminar).
+  glitter(Glitter),
+  display_action(goforward).
 
-accion(girarizquierda,[Stench,Breeze,Glitter,no,no]) :-
+execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
-  mi_orientacion(Angle),
+  agent_orientation(Angle),
   NewAngle is (Angle + 90) mod 360,
-  retract(mi_orientacion(Angle)),
-  assert(mi_orientacion(NewAngle)),
+  retract(agent_orientation(Angle)),
+  assert(agent_orientation(NewAngle)),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
-  %display_action(girarizquierda).
+  glitter(Glitter),
+  display_action(turnleft).
 
-accion(girarderecha,[Stench,Breeze,Glitter,no,no]) :-
+execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
-  mi_orientacion(Angle),
+  agent_orientation(Angle),
   NewAngle is (Angle + 270) mod 360,
-  retract(mi_orientacion(Angle)),
-  assert(mi_orientacion(NewAngle)),
+  retract(agent_orientation(Angle)),
+  assert(agent_orientation(NewAngle)),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
-  %display_action(girarderecha).
+  glitter(Glitter),
+  display_action(turnright).
 
-accion(alzar,[Stench,Breeze,no,no,no]) :-
+execute(grab,[Stench,Breeze,no,no,no]) :-
   decrement_score,
   get_the_gold,
   stench(Stench),
-  breeze(Breeze).
-  %display_action(alzar).
+  breeze(Breeze),
+  display_action(grab).
 
-accion(disparar,[Stench,Breeze,Glitter,no,Scream]) :-
+execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
   decrement_score,
   shoot_arrow(Scream),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
-  %display_action(disparar).
+  glitter(Glitter),
+  display_action(shoot).
 
-accion(finalizar,[no,no,no,no,no]) :-  % climb works, no wumpus movement
+execute(climb,[no,no,no,no,no]) :-  % climb works, no wumpus movement
   agent_location(1,1), !,
   decrement_score,
-  mi_oro(G),
+  agent_gold(G),
   retract(agent_score(S)),
   S1 is (S + (1000 * G)),
   assert(agent_score(S1)),
   retract(agent_in_cave(yes)),
   assert(agent_in_cave(no)),
-  %display_action(finalizar),
-  format("El oro es mio!.~n",[]).
+  display_action(climb),
+  format("I am outta here.~n",[]).
 
-accion(finalizar,[Stench,Breeze,Glitter,no,no]) :-
+execute(climb,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter),
-  %display_action(finalizar),
-  format("No puedes realizar esa accion desde aquí.~n",[]).
+  display_action(climb),
+  format("You cannot leave the cave from here.~n",[]).
 
 
 % decrement_score: subtracts one from agent_score for each move
@@ -399,7 +404,7 @@ decrement_score :-
   assert(agent_score(S1)).
 
 
-% stench(Stench): Stench = yes if wumpus (dead or vivo) is in a square
+% stench(Stench): Stench = yes if wumpus (dead or alive) is in a square
 %   directly up, down, left, or right of the current agent location.
 
 stench(yes) :-
@@ -451,15 +456,15 @@ glitter(no).
 % kill_wumpus: pretty obvious
 
 kill_wumpus :-
-  retract(estado_wumpus(vivo)),
-  assert(estado_wumpus(muerto)).
+  retract(wumpus_health(alive)),
+  assert(wumpus_health(dead)).
 
 
-% caminar(Bump): Attempts to move agent forward one unit along
+% goforward(Bump): Attempts to move agent forward one unit along
 %   its current orientation.
 
-caminar(no) :-
-  mi_orientacion(Angle),
+goforward(no) :-
+  agent_orientation(Angle),
   agent_location(X,Y),
   new_location(X,Y,Angle,X1,Y1),
   wumpus_world_extent(E),         % check if agent off world
@@ -471,7 +476,7 @@ caminar(no) :-
   retract(agent_location(X,Y)),   % update location
   assert(agent_location(X1,Y1)).
 
-caminar(yes).     % Ran into wall, Bump = yes
+goforward(yes).     % Ran into wall, Bump = yes
 
 
 % new_location(X,Y,Orientation,X1,Y1): returns new coordinates X1,Y1
@@ -490,35 +495,35 @@ new_location(X,Y,270,X,Y1) :-
   Y1 is Y - 1.
 
 
-% update_mi_estado: kills agent if in a room with a live wumpus or a
+% update_agent_health: kills agent if in a room with a live wumpus or a
 %   pit.
 
-update_mi_estado :-
-  mi_estado(vivo),
+update_agent_health :-
+  agent_health(alive),
   agent_location(X,Y),
-  estado_wumpus(vivo),
+  wumpus_health(alive),
   wumpus_location(X,Y),
   !,
-  retract(mi_estado(vivo)),
-  assert(mi_estado(muerto)),
+  retract(agent_health(alive)),
+  assert(agent_health(dead)),
   retract(agent_score(S)),
   S1 is S - 10000,
   assert(agent_score(S1)),
-  format("Has sido devorado por el Wumpus !~n",[]).
+  format("You are Wumpus food!~n",[]).
 
-update_mi_estado :-
-  mi_estado(vivo),
+update_agent_health :-
+  agent_health(alive),
   agent_location(X,Y),
   pit(X,Y),
   !,
-  retract(mi_estado(vivo)),
-  assert(mi_estado(muerto)),
+  retract(agent_health(alive)),
+  assert(agent_health(dead)),
   retract(agent_score(S)),
   S1 is S - 10000,
   assert(agent_score(S1)),
   format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
 
-update_mi_estado.
+update_agent_health.
 
 
 % get_the_gold: adds gold to agents loot if any gold in the square
@@ -526,10 +531,11 @@ update_mi_estado.
 get_the_gold :-
   agent_location(X,Y),
   gold(X,Y), !,                   % there's gold in this square!
-  mi_oro(NGold),              %   add to agents loot
+  agent_gold(NGold),              %   add to agents loot
   NGold1 is NGold + 1,
-  retract(mi_oro(NGold)),
-  assert(mi_oro(NGold1)),
+  retract(agent_gold(NGold)),
+  assert(agent_gold(NGold1)),
+  format("You now have ~d piece(s) of gold!~n",NGold1),
   retract(gold(X,Y)).             %   delete gold from square
 
 get_the_gold.
@@ -539,13 +545,14 @@ get_the_gold.
 %   direction the agent is facing and listen for Scream.
 
 shoot_arrow(Scream) :-
-  mis_flechas(Arrows),
+  agent_arrows(Arrows),
   Arrows > 0, !,                  % agent has an arrow and will use it!
   Arrows1 is Arrows - 1,          %   update number of arrows
-  retract(mis_flechas(Arrows)),
-  assert(mis_flechas(Arrows1)),
+  retract(agent_arrows(Arrows)),
+  assert(agent_arrows(Arrows1)),
+  format("You now have ~d arrow(s).~n",Arrows1),
   agent_location(X,Y),
-  mi_orientacion(Angle),
+  agent_orientation(Angle),
   propagate_arrow(X,Y,Angle,Scream).
 
 shoot_arrow(no).
@@ -592,22 +599,19 @@ propagate_arrow(_,_,_,no).
 % display_world: Displays everything known about the wumpus world,
 
 display_world :-
-  %nl,
-  %wumpus_world_extent(E),
-  %display_rows(E,E),
-  estado_wumpus(WH),
-  mi_orientacion(AA),
-  mi_estado(AH),
-  mis_flechas(N),
-  mi_oro(G),
-  wumpus_location(X,Y),
-  agent_location(W,Z),
-  gold(U,V),
-  pit(S,T),
-  write('{"datos":{"coorWumpus":{"x": "'), write(X), write('","y":'),write(Y),
-  write('},"coorJugador":{"x":"'),write(W),write('","y":'),write(Z),write('},"est_wumpus":"'),write(WH),write('","orientacion":"'),
-  write(AA),write('","est_jugador":"'),write(AH),
-  write('","mis_flechas":"'),write(N),write('", "mi_oro":"'),write(G),write('"}}').
+  nl,
+  wumpus_world_extent(E),
+  display_rows(E,E),
+  wumpus_health(WH),
+  agent_orientation(AA),
+  agent_health(AH),
+  agent_arrows(N),
+  agent_gold(G),
+  format('wumpus_health(~w)~n',[WH]),
+  format('agent_orientation(~d)~n',[AA]),
+  format('agent_health(~w)~n',[AH]),
+  format('agent_arrows(~d)~n',[N]),
+  format('agent_gold(~d)~n',[G]).
 
 
 display_rows(0,E) :-
@@ -640,8 +644,6 @@ display_info(X,Y) :-
   display_location_fact(pit,X,Y,'P'),
   display_location_fact(gold,X,Y,'G').
 
-
-
 display_location_fact(Functor,X,Y,Atom) :-
   Fact =.. [Functor,X,Y],
   Fact,
@@ -661,16 +663,5 @@ display_dashes(E) :-
 %   new percept generated.
 
 display_action(Action) :-
+  format("~nExecuting ~w~n",[Action]),
   display_world.
-
-
-
-% PHP Binding
-iniciamosPhp :- initialize.%,write("iniciamos..").
-mostrarMundoPhp   :-   display_world.
-dispararPhp       :-   accion(disparar,P).
-caminarPhp        :-   accion(caminar,P).
-alzarPhp          :-   accion(alzar,P).
-girarDerechaPhp   :-   accion(girarderecha,P).
-girarIzquierdaPhp :-   accion(girarizquierda,P).
-subirPhp          :-   accion(finalizar,P).

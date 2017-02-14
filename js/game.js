@@ -5,6 +5,7 @@ var orientacionJugador = 0;
 var datosProlog;
 var prologQuery;
 var cantidadMovimientos = 0;
+var estado_wumpus = "alive";
 opuesto = { 0: 180, 180: 0, 270: 90, 90: 270 };
 derecha = { 0: 270, 180: 90, 270: 180, 90: 0 };
 izquierda = { 0: 90, 180: 270, 270: 0, 90: 180 };
@@ -109,6 +110,7 @@ async function disparar(estado_actual) {
 	seleccionarCasillaActual().html('');
 	seleccionarCasillaActual().append(obtenerImagen(imagen_disparo));
 	sonidoDisparar();
+
 	await sleep(500);
 	seleccionarCasillaActual().html('');
 	seleccionarCasillaActual().append(obtenerImagen(estado_actual));
@@ -119,31 +121,38 @@ function seleccionarDisparo(estado){
 	imagen_disparar = '';
 	switch(estado){
 		case 'images/izquierda.png':
-				imagen_disparar = 'images/disparar_izquierda';
+				imagen_disparar = 'images/disparar_izquierda.png';
 				break;
 		case 'images/derecha.png':
-				imagen_disparar = 'images/disparar_derecha';
+				imagen_disparar = 'images/disparar_derecha.png';
 				break;
 		case 'images/espalda.png':
-				imagen_disparar = 'images/disparar_arriba';
+				imagen_disparar = 'images/disparar_arriba.png';
 				break;
 		case 'images/frente.png':
-				imagen_disparar = 'images/disparar_abajo';
+				imagen_disparar = 'images/disparar_abajo.png';
 				break;
 	}
 	return imagen_disparar;
 }
 
 //Produce el sonido de un disparo
-function sonidoDisparar(){
+async function sonidoDisparar(){
 	audioElement = document.createElement('audio');
 	audioElement.setAttribute('src', 'song/disparo.mp3');
 	audioElement.play();
+	await sleep(350);
 }
 
 function sonidoPared(){
 	audioElement = document.createElement('audio');
 	audioElement.setAttribute('src', 'song/pared.mp3');
+	audioElement.play();
+}
+
+function sonidoWumpusMuerto(){
+	audioElement = document.createElement('audio');
+	audioElement.setAttribute('src', 'song/wumpus_muerto.mp3');
 	audioElement.play();
 }
 
@@ -258,7 +267,7 @@ function accionProlog(query){
 
 function ajaxProlog(query){
 	$.ajax({
-	    url: 'http://localhost/final_ia/feedback.php',
+	    url: 'http://localhost/final_io/feedback.php',
 	    cache: false,
 	    data: {query: query},
 		type: 'post',
@@ -278,11 +287,20 @@ function ajaxProlog(query){
 	});
 }
 
+function verificarMuerteWumpus(estado_anterior){
+	if(estado_anterior != estado_wumpus){
+		sonidoWumpusMuerto();
+	}
+}
+
+
 function refrezcarDatos(){
-	console.log(datosProlog.datos.coorJugador);
+	console.log(datosProlog.datos);
 	flechas = datosProlog.datos.mis_flechas;
 	orientacion = datosProlog.datos.orientacion;
+	estado_anterior = estado_wumpus;
 	estado_wumpus = datosProlog.datos.est_wumpus;
+	verificarMuerteWumpus(estado_anterior);
 	cantidad_oro = datosProlog.datos.mi_oro;
 	$('#flechas').html(flechas);
 	$('#oro').html(cantidad_oro);

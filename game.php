@@ -1,5 +1,4 @@
 <?php 
-
 $jugador = $_POST['jugador'];
 include("template/header.php"); 
 ?>
@@ -44,17 +43,8 @@ include("template/header.php");
 	</div>
 	</div>
 
-
-
-	
 	<div class="animated">
 		<small >Esta jugando: <?php echo isset($jugador) ? $jugador : 'no' ?> &nbsp;&nbsp;</small>
 	</div>
 <?php include("template/footer.php"); ?>
-<script src="js/game.js"></script>
-<script>
-	var datosProlog;
-	jQuery(document).ready(function($) {
-		
-	});	
-</script>
+
