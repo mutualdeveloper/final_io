@@ -1,0 +1,84 @@
+tbody,table{
+	width: 100%;
+}
+td{
+	width: 25%;
+	border: 2px solid white;
+	height: 90px;
+	text-align: center;
+	background-color: rgba(0,0,0,0.8);
+}
+
+td img{
+	margin: 0 auto;
+}
+
+.oro, .wumpus{
+	max-width: 50px;
+}
+
+.navbar{
+	border-radius: 0;
+}
+
+html, body {
+    height: 100%;
+}
+
+body{
+	background:rgba(0,0,0,0.5);
+}
+
+html { 
+  background: url(../images/res/background.jpg) no-repeat center center fixed; 
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+}
+
+#log-panel{
+	margin: 15% 0;
+}
+
+#panel-info{
+	background-color: rgba(0,0,0,0.8);
+}
+
+
+.animated {
+	position: absolute;
+	bottom: 0;
+	text-align: right;
+    background: black;
+    animation-name: example;
+    animation-duration: 4s;
+    animation-iteration-count: infinite;
+    width: 100%;
+}
+
+
+@keyframes example {
+    0%   {
+        filter: brightness(1);
+        filter: contrast(1);
+        -webkit-filter: brightness(1);
+        -webkit-filter: contrast(1);
+    }
+    50%  {
+        filter: brightness(0.4);
+        filter: contrast(0.4);
+        -webkit-filter: brightness(0.4);
+        -webkit-filter: contrast(0.4);
+    }
+    100% {
+        filter: brightness(1);
+        filter: contrast(1);
+        -webkit-filter: brightness(1);
+        -webkit-filter: contrast(1);
+    }
+}
+
+.datos-panel{
+    width: 5px;
+}
