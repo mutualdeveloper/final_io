@@ -6,6 +6,8 @@ var datosProlog;
 var prologQuery;
 var cantidadMovimientos = 0;
 var estado_wumpus = "alive";
+var flechas = 1;
+var cantidad_oro = 0;
 opuesto = { 0: 180, 180: 0, 270: 90, 90: 270 };
 derecha = { 0: 270, 180: 90, 270: 180, 90: 0 };
 izquierda = { 0: 90, 180: 270, 270: 0, 90: 180 };
@@ -94,26 +96,29 @@ function sleep(ms) {
 
 // 'animacion' de alzar
 async function alzar(estado_actual) {
-	accionProlog('alzarPhp');
-	cantidadMovimientos++;
-	seleccionarCasillaActual().html('');
-	seleccionarCasillaActual().append(obtenerImagen('images/levantar.png'));
-	await sleep(100);
-	seleccionarCasillaActual().html('');
-	seleccionarCasillaActual().append(obtenerImagen(estado_actual));
+	if(cantidad_oro == 0){
+		accionProlog('alzarPhp');
+		cantidadMovimientos++;
+		seleccionarCasillaActual().html('');
+		seleccionarCasillaActual().append(obtenerImagen('images/levantar.png'));
+		await sleep(100);
+		seleccionarCasillaActual().html('');
+		seleccionarCasillaActual().append(obtenerImagen(estado_actual));
+	}
 }
 
 // 'animación' de disparo
 async function disparar(estado_actual) {
-	accionProlog('dispararPhp');
-	imagen_disparo = seleccionarDisparo(estado_actual);
-	seleccionarCasillaActual().html('');
-	seleccionarCasillaActual().append(obtenerImagen(imagen_disparo));
-	sonidoDisparar();
-
-	await sleep(500);
-	seleccionarCasillaActual().html('');
-	seleccionarCasillaActual().append(obtenerImagen(estado_actual));
+	if(flechas > 0){
+		accionProlog('dispararPhp');
+		imagen_disparo = seleccionarDisparo(estado_actual);
+		seleccionarCasillaActual().html('');
+		seleccionarCasillaActual().append(obtenerImagen(imagen_disparo));
+		sonidoDisparar();
+		await sleep(500);
+		seleccionarCasillaActual().html('');
+		seleccionarCasillaActual().append(obtenerImagen(estado_actual));
+	}
 }
 
 //Selecciona la imagen adecuada de disparo
@@ -297,7 +302,7 @@ function verificarMuerteWumpus(estado_anterior){
 function refrezcarDatos(){
 	console.log(datosProlog.datos);
 	flechas = datosProlog.datos.mis_flechas;
-	orientacion = datosProlog.datos.orientacion;
+	orientacionJugador = datosProlog.datos.orientacion;
 	estado_anterior = estado_wumpus;
 	estado_wumpus = datosProlog.datos.est_wumpus;
 	verificarMuerteWumpus(estado_anterior);
@@ -305,7 +310,25 @@ function refrezcarDatos(){
 	$('#flechas').html(flechas);
 	$('#oro').html(cantidad_oro);
 	$('#estado_wumpus').html(estado_wumpus);
-	$('#orientacion').html(orientacionJugador);
+	insertarOrientacion();
 	$('#movimientos').html(cantidadMovimientos);
+}
+
+
+function insertarOrientacion(){
+	switch(orientacionJugador){
+		case '0':
+				$('#orientacion').html('derecha');
+				break;
+		case '90':
+				$('#orientacion').html('arriba');
+				break;
+		case '180':
+				$('#orientacion').html('izquierda');
+				break;
+		case '270':
+				$('#orientacion').html('abajo');
+				break;
+	}
 }
 
