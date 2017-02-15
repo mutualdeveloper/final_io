@@ -335,7 +335,8 @@ execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
   update_agent_health,    % check for wumpus or pit
   stench(Stench),         % update rest of percept
   breeze(Breeze),
-  glitter(Glitter).
+  glitter(Glitter),
+  write(Bump),write(Stench),write(Breeze),write(Glitter).
   %display_action(goforward).
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
@@ -610,8 +611,8 @@ display_world :-
   agent_health(AH),
   agent_arrows(N),
   agent_gold(G),
-  write('{"datos":{"coorWumpus":{"x": "'), write(X), write('","y":'),write(Y),
-  write('},"coorJugador":{"x":"'),write(W),write('","y":'),write(Z),write('},"est_wumpus":"'),write(WH),write('","orientacion":"'),write(AA),write('","est_jugador":"'),write(AH),
+  write('{"datos":{"coorWumpus":{"x": '), write(X), write(',"y":'),write(Y),
+  write('},"coorJugador":{"x":'),write(W),write(',"y":'),write(Z),write('},"est_wumpus":"'),write(WH),write('","orientacion":"'),write(AA),write('","est_jugador":"'),write(AH),
   write('","mis_flechas":"'),write(N),write('", "mi_oro":"'),write(G),write('"}}').
   
   %% nl,

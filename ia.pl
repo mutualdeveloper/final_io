@@ -604,8 +604,8 @@ display_world :-
   agent_location(W,Z),
   gold(U,V),
   pit(S,T),
-  write('{"datos":{"coorWumpus":{"x": "'), write(X), write('","y":'),write(Y),
-  write('},"coorJugador":{"x":"'),write(W),write('","y":'),write(Z),write('},"est_wumpus":"'),write(WH),write('","orientacion":"'),
+  write('{"datos":{"coorWumpus":{"x": '), write(X), write(',"y":'),write(Y),
+  write('},"coorJugador":{"x":'),write(W),write(',"y":'),write(Z),write('},"est_wumpus":"'),write(WH),write('","orientacion":"'),
   write(AA),write('","est_jugador":"'),write(AH),
   write('","mis_flechas":"'),write(N),write('", "mi_oro":"'),write(G),write('"}}').
 

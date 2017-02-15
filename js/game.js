@@ -6,6 +6,7 @@ var datosProlog;
 var prologQuery;
 var cantidadMovimientos = 0;
 var estado_wumpus = "alive";
+var estado_jugador = "alive";
 var flechas = 1;
 var cantidad_oro = 0;
 opuesto = { 0: 180, 180: 0, 270: 90, 90: 270 };
@@ -15,47 +16,88 @@ izquierda = { 0: 90, 180: 270, 270: 0, 90: 180 };
 $('html').unbind().keyup(function(e) { 
 	switch (e.keyCode) {
 	    case 37:
-	    	cantidadMovimientos++;
-	    	seleccionarCasillaActual().html('');
-	        seleccionarCasillaActual().append(obtenerImagen('images/izquierda.png'));
-	        reorientar(180);
+	    	girarIzquierda();
 	        break;
 	    case 38:
-	    	cantidadMovimientos++;
-	        seleccionarCasillaActual().html('');
-	        seleccionarCasillaActual().append(obtenerImagen('images/espalda.png'));
-	        reorientar(90);
+	    	girarArriba();
 	        break;
 	    case 39:
-	    	cantidadMovimientos++;
-	        seleccionarCasillaActual().html('');
-	        seleccionarCasillaActual().append(obtenerImagen('images/derecha.png'));
-	        reorientar(0);
+	    	girarDerecha();
 	        break;
 	    case 40:
-	    	cantidadMovimientos++;
-	        seleccionarCasillaActual().html('');
-	        seleccionarCasillaActual().append(obtenerImagen('images/frente.png'));
-	        reorientar(270);
+	    	girarAbajo();
 	        break;
 	    case 65:
-	    	cantidadMovimientos++;
-	        estado_actual = seleccionarCasillaActual().find('img').attr('src');
-	        alzar(estado_actual);
+	    	levantar();
 	        break;
 	    case 83:
-	    	cantidadMovimientos++;
-	        estado_actual = seleccionarCasillaActual().find('img').attr('src');
-	        disparar(estado_actual);
+	    	lanzarFlecha();
 	        break;
         case 32:
-	    	cantidadMovimientos++;
-	        mover();
+	    	caminar();
 	        break;
 	}
 });
 
+function girarIzquierda(){
+	if(estado_jugador == "alive"){
+		cantidadMovimientos++;
+		cambiarImagen('images/izquierda.png');
+	    reorientar(180);
+	}
+}
 
+function girarDerecha(){
+	if(estado_jugador == "alive"){
+	cantidadMovimientos++;
+	cambiarImagen('images/derecha.png');
+	reorientar(0);
+	}
+}
+
+function girarArriba(){
+	if(estado_jugador == "alive"){
+	cantidadMovimientos++;
+	cambiarImagen('images/espalda.png');
+	reorientar(90);
+	}
+}
+
+function girarAbajo(){
+	if(estado_jugador == "alive"){
+	cantidadMovimientos++;
+	cambiarImagen('images/frente.png');
+    reorientar(270);
+	}
+}
+
+function levantar(){
+	if(estado_jugador == "alive"){
+	cantidadMovimientos++;
+    estado_actual = seleccionarCasillaActual().find('img').attr('src');
+    alzar(estado_actual);
+}
+}
+
+function lanzarFlecha(){
+	if(estado_jugador == "alive"){
+	cantidadMovimientos++;
+    estado_actual = seleccionarCasillaActual().find('img').attr('src');
+    disparar(estado_actual);
+}
+}
+
+function caminar(){
+	if(estado_jugador == "alive"){
+		cantidadMovimientos++;
+	    mover();
+	}
+}
+
+function cambiarImagen(urlImagen){
+	seleccionarCasillaActual().html('');
+	seleccionarCasillaActual().append(obtenerImagen(urlImagen));
+}
 
 //Inicia el juego  
 function iniciar_jugador(){
@@ -98,6 +140,7 @@ function sleep(ms) {
 async function alzar(estado_actual) {
 	if(cantidad_oro == 0){
 		accionProlog('alzarPhp');
+		sonidoMoneda();
 		cantidadMovimientos++;
 		seleccionarCasillaActual().html('');
 		seleccionarCasillaActual().append(obtenerImagen('images/levantar.png'));
@@ -155,12 +198,23 @@ function sonidoPared(){
 	audioElement.play();
 }
 
+function sonidoWumpus(){
+	audioElement = document.createElement('audio');
+	audioElement.setAttribute('src', 'song/wumpus.mp3');
+	audioElement.play();
+}
+
 function sonidoWumpusMuerto(){
 	audioElement = document.createElement('audio');
 	audioElement.setAttribute('src', 'song/wumpus_muerto.mp3');
 	audioElement.play();
 }
 
+function sonidoMoneda(){
+	audioElement = document.createElement('audio');
+	audioElement.setAttribute('src', 'song/moneda.mp3');
+	audioElement.play();
+}
 
 
 //Rotación:
@@ -302,9 +356,10 @@ function verificarMuerteWumpus(estado_anterior){
 function refrezcarDatos(){
 	console.log(datosProlog.datos);
 	flechas = datosProlog.datos.mis_flechas;
-	orientacionJugador = datosProlog.datos.orientacion;
+	orientacionJugador = parseInt(datosProlog.datos.orientacion);
 	estado_anterior = estado_wumpus;
 	estado_wumpus = datosProlog.datos.est_wumpus;
+	estado_jugador = datosProlog.datos.est_jugador;
 	verificarMuerteWumpus(estado_anterior);
 	cantidad_oro = datosProlog.datos.mi_oro;
 	$('#flechas').html(flechas);
@@ -312,23 +367,44 @@ function refrezcarDatos(){
 	$('#estado_wumpus').html(estado_wumpus);
 	insertarOrientacion();
 	$('#movimientos').html(cantidadMovimientos);
+	verificarEstadoJugador();
 }
 
 
 function insertarOrientacion(){
 	switch(orientacionJugador){
-		case '0':
+		case 0:
 				$('#orientacion').html('derecha');
 				break;
-		case '90':
+		case 90:
 				$('#orientacion').html('arriba');
 				break;
-		case '180':
+		case 180:
 				$('#orientacion').html('izquierda');
 				break;
-		case '270':
+		case 270:
 				$('#orientacion').html('abajo');
 				break;
 	}
+}
+
+function verificarEstadoJugador(){
+	if(mismaPosicion(datosProlog.datos.coorJugador,datosProlog.datos.coorWumpus)){
+		seleccionarCasillaActual().html('');
+		seleccionarCasillaActual().append(obtenerImagen('images/muerto.png'));
+		sonidoWumpus();
+	}
+}
+
+function mismaPosicion(coorJugador, coorWumpus){
+	rta = false;
+	if(estado_wumpus == "alive"){
+		if(coorJugador.x == coorWumpus.x){
+			if(coorJugador.y == coorWumpus.y){
+				rta = true;
+			}
+		}
+	}
+	return rta;
 }
 
